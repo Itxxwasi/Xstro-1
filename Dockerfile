@@ -1,5 +1,5 @@
-FROM node:20
-WORKDIR /app
+FROM node:20-slim
+WORKDIR /xstro
 RUN apt-get update && \
     apt-get install -y git && \
     npm install -g pm2 && \
