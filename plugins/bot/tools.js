@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import axios from 'axios';
 import FormData from 'form-data';
 import config from '../../config.js';
-import { utils } from '../../lib/utils.js';
+import { FileTypeFromBuffer } from 'utils';
 import { join } from 'path';
 import simpleGit from 'simple-git';
 import Heroku from 'heroku-client';
@@ -73,7 +73,7 @@ export const updateHerokuApp = async () => {
 };
 
 export async function flipMedia(buffer, direction) {
-	const fileType = utils.FileTypeFromBuffer(buffer);
+	const fileType = FileTypeFromBuffer(buffer);
 	if (!fileType) throw new Error('Unsupported file type.');
 	const { ext, mime } = fileType;
 	const form = new FormData();
@@ -137,7 +137,7 @@ const getMimeAndExt = fileType => {
 
 export const toSticker = async (buffer, packname = config.STICKER_PACK.split(';')[1], author = config.STICKER_PACK.split(';')[0]) => {
 	try {
-		const fileType = utils.FileTypeFromBuffer(buffer);
+		const fileType = FileTypeFromBuffer(buffer);
 		const fileInfo = getMimeAndExt(fileType);
 		if (!fileInfo) throw new Error('Unsupported or unknown file type');
 		const { mime, ext } = fileInfo;
@@ -190,3 +190,85 @@ export const remini = async (image, filterType) => {
 		throw new Error(`Error enhancing image: ${error.message}`);
 	}
 };
+
+export const solveMath = expression => {
+	if (typeof expression !== 'string') return 'Invalid input: expression must be a string';
+
+	const sanitizedExpression = expression.replace(/[^0-9+\-*/().√^%\s]/g, '').trim();
+	if (!sanitizedExpression || sanitizedExpression.length === 0) return 'Empty expression';
+
+	try {
+		let processedExpression = sanitizedExpression.replace(/√/g, 'Math.sqrt').replace(/\^/g, '**').replace(/\s+/g, '');
+		const safeEval = new Function(`
+            "use strict";
+            try {
+                return String(${processedExpression});
+            } catch (error) {
+                return 'Evaluation error';
+            }
+        `);
+
+		const result = safeEval();
+		if (result === null || result === undefined) return 'Invalid result';
+
+		if (Number.isNaN(Number(result)) || !Number.isFinite(Number(result))) return 'Mathematical error';
+
+		return String(Number(result).toPrecision(15)).replace(/\.?0+$/, '');
+	} catch (error) {
+		return 'Invalid expression';
+	}
+};
+
+export const base64 = str => Buffer.from(str).toString('base64');
+
+export const ebinary = str =>
+	str
+		.split('')
+		.map(char => char.charCodeAt(0).toString(2).padStart(8, '0'))
+		.join(' ');
+
+export const dbinary = bin =>
+	bin
+		.split(' ')
+		.map(b => String.fromCharCode(parseInt(b, 2)))
+		.join('');
+
+export const obfuscate = code => {
+	if (typeof code !== 'string') {
+		throw new Error('Input must be a string');
+	}
+
+	let scrambled = code
+		.split('')
+		.map(char => {
+			const codePoint = char.codePointAt(0);
+			return String.fromCodePoint(codePoint + 5);
+		})
+		.join('');
+	return btoa(scrambled).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+export const deobfuscate = encoded => {
+	if (typeof encoded !== 'string') throw new Error('Input must be a string');
+
+	let base64 = encoded
+		.replace(/-/g, '+')
+		.replace(/_/g, '/')
+		.padEnd(encoded.length + ((4 - (encoded.length % 4)) % 4), '=');
+
+	let decoded = atob(base64);
+
+	return decoded
+		.split('')
+		.map(char => {
+			const codePoint = char.codePointAt(0);
+			return String.fromCodePoint(codePoint - 5);
+		})
+		.join('');
+};
+
+export const toAscii = str =>
+	str
+		.split('')
+		.map(char => char.charCodeAt(0))
+		.join(' ');
